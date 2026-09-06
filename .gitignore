@@ -17,3 +17,6 @@ coverage.out
 .idea/
 .vscode/
 *.swp
+
+# cmd-code
+.commandcode
