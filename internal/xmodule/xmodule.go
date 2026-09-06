@@ -5,16 +5,16 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/cache-22/cache-22-server/internal/app/repository"
-	authusecase "github.com/cache-22/cache-22-server/internal/app/usecase/auth"
-	coverusecase "github.com/cache-22/cache-22-server/internal/app/usecase/cover"
-	gameusecase "github.com/cache-22/cache-22-server/internal/app/usecase/game"
-	"github.com/cache-22/cache-22-server/internal/config"
-	httphandler "github.com/cache-22/cache-22-server/internal/handler/http"
-	webhandler "github.com/cache-22/cache-22-server/internal/handler/web"
-	"github.com/cache-22/cache-22-server/internal/infra/db"
-	"github.com/cache-22/cache-22-server/internal/infra/igdb"
-	"github.com/cache-22/cache-22-server/internal/infra/scanner"
+	"github.com/x1nx3r/cache-22-server/internal/app/repository"
+	authusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/auth"
+	coverusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/cover"
+	gameusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/game"
+	"github.com/x1nx3r/cache-22-server/internal/config"
+	httphandler "github.com/x1nx3r/cache-22-server/internal/handler/http"
+	webhandler "github.com/x1nx3r/cache-22-server/internal/handler/web"
+	"github.com/x1nx3r/cache-22-server/internal/infra/db"
+	"github.com/x1nx3r/cache-22-server/internal/infra/igdb"
+	"github.com/x1nx3r/cache-22-server/internal/infra/scanner"
 )
 
 type Dependencies struct {

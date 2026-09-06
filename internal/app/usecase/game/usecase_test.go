@@ -6,7 +6,7 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/cache-22/cache-22-server/internal/entity"
+	"github.com/x1nx3r/cache-22-server/internal/entity"
 )
 
 type fakeGames struct {

@@ -11,10 +11,10 @@ import (
 	"strings"
 	"testing"
 
-	gameusecase "github.com/cache-22/cache-22-server/internal/app/usecase/game"
-	"github.com/cache-22/cache-22-server/internal/entity"
-	"github.com/cache-22/cache-22-server/internal/infra/scanner"
-	"github.com/cache-22/cache-22-server/internal/testutil"
+	gameusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/game"
+	"github.com/x1nx3r/cache-22-server/internal/entity"
+	"github.com/x1nx3r/cache-22-server/internal/infra/scanner"
+	"github.com/x1nx3r/cache-22-server/internal/testutil"
 )
 
 type fakeUC struct {

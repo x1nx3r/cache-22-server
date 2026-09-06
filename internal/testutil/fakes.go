@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	authusecase "github.com/cache-22/cache-22-server/internal/app/usecase/auth"
-	"github.com/cache-22/cache-22-server/internal/entity"
+	authusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/auth"
+	"github.com/x1nx3r/cache-22-server/internal/entity"
 	"golang.org/x/crypto/bcrypt"
 )
 

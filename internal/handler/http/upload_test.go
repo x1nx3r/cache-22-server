@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/cache-22/cache-22-server/internal/entity"
-	"github.com/cache-22/cache-22-server/internal/infra/scanner"
+	"github.com/x1nx3r/cache-22-server/internal/entity"
+	"github.com/x1nx3r/cache-22-server/internal/infra/scanner"
 )
 
 type stubRepo struct{}

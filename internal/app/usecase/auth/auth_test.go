@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cache-22/cache-22-server/internal/entity"
+	"github.com/x1nx3r/cache-22-server/internal/entity"
 	"golang.org/x/crypto/bcrypt"
 )
 

@@ -7,8 +7,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cache-22/cache-22-server/internal/entity"
-	"github.com/cache-22/cache-22-server/internal/infra/igdb"
+	"github.com/x1nx3r/cache-22-server/internal/entity"
+	"github.com/x1nx3r/cache-22-server/internal/infra/igdb"
 )
 
 type Games interface {

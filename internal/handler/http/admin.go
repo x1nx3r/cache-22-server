@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
-	authusecase "github.com/cache-22/cache-22-server/internal/app/usecase/auth"
+	authusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/auth"
 )
 
 func decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {

@@ -6,11 +6,11 @@ import (
 	"net/http"
 	"strconv"
 
-	authusecase "github.com/cache-22/cache-22-server/internal/app/usecase/auth"
-	gameusecase "github.com/cache-22/cache-22-server/internal/app/usecase/game"
-	"github.com/cache-22/cache-22-server/internal/entity"
-	"github.com/cache-22/cache-22-server/internal/infra/scanner"
-	"github.com/cache-22/cache-22-server/internal/web"
+	authusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/auth"
+	gameusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/game"
+	"github.com/x1nx3r/cache-22-server/internal/entity"
+	"github.com/x1nx3r/cache-22-server/internal/infra/scanner"
+	"github.com/x1nx3r/cache-22-server/internal/web"
 )
 
 const sessionCookie = "cache22_sess"

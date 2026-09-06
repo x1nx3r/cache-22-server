@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cache-22/cache-22-server/internal/app/repository"
-	"github.com/cache-22/cache-22-server/internal/entity"
+	"github.com/x1nx3r/cache-22-server/internal/app/repository"
+	"github.com/x1nx3r/cache-22-server/internal/entity"
 )
 
 var imageExts = map[string]bool{

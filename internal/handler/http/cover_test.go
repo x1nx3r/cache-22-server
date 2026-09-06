@@ -10,9 +10,9 @@ import (
 	"sync"
 	"testing"
 
-	coverusecase "github.com/cache-22/cache-22-server/internal/app/usecase/cover"
-	"github.com/cache-22/cache-22-server/internal/entity"
-	"github.com/cache-22/cache-22-server/internal/infra/scanner"
+	coverusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/cover"
+	"github.com/x1nx3r/cache-22-server/internal/entity"
+	"github.com/x1nx3r/cache-22-server/internal/infra/scanner"
 )
 
 type fakeCoverStore struct {

@@ -8,7 +8,7 @@ package web
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/cache-22/cache-22-server/internal/entity"
+import "github.com/x1nx3r/cache-22-server/internal/entity"
 
 func Library(games []entity.Game, loggedIn bool, isAdmin bool) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {

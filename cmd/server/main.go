@@ -4,8 +4,8 @@ import (
 	"context"
 	"log"
 
-	"github.com/cache-22/cache-22-server/internal/config"
-	"github.com/cache-22/cache-22-server/internal/xmodule"
+	"github.com/x1nx3r/cache-22-server/internal/config"
+	"github.com/x1nx3r/cache-22-server/internal/xmodule"
 )
 
 func main() {

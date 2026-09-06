@@ -1,4 +1,4 @@
-module github.com/cache-22/cache-22-server
+module github.com/x1nx3r/cache-22-server
 
 go 1.25.0
 
