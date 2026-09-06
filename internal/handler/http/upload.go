@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/x1nx3r/cache-22-server/internal/entity"
 )
 
 const maxUploadBytes = 9 << 30
@@ -88,40 +90,44 @@ func (h *Handler) uploadGame(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	g, code, msg := h.finalizeUpload(r.Context(), tmpPath, filename, titleOver)
+	if code != http.StatusCreated {
+		os.Remove(tmpPath)
+		writeJSON(w, code, map[string]string{"error": msg})
+		return
+	}
+	writeJSON(w, http.StatusCreated, g)
+}
+
+// finalizeUpload moves a fully-received file into the library, inspects it
+// and registers the game. tmpPath is consumed (renamed or removed).
+func (h *Handler) finalizeUpload(ctx context.Context, tmpPath, filename, titleOver string) (entity.Game, int, string) {
 	serial, ok := sanitizeSerial(filename)
 	if !ok {
-		os.Remove(tmpPath)
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "bad filename"})
-		return
+		return entity.Game{}, http.StatusBadRequest, "bad filename"
 	}
 	final := filepath.Join(h.scanner.LibraryDir(), serial+".iso")
 	if _, err := os.Stat(final); err == nil {
-		os.Remove(tmpPath)
-		writeJSON(w, http.StatusConflict, map[string]string{"error": "game already exists"})
-		return
+		return entity.Game{}, http.StatusConflict, errGameExists.Error()
 	}
 	if err := os.Rename(tmpPath, final); err != nil {
-		os.Remove(tmpPath)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
-		return
+		return entity.Game{}, http.StatusInternalServerError, err.Error()
 	}
 
 	g, err := h.scanner.Inspect(final)
 	if err != nil {
 		os.Remove(final)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
-		return
+		return entity.Game{}, http.StatusInternalServerError, err.Error()
 	}
 	if titleOver != "" {
 		g.Title = titleOver
 	}
-	if err := h.games.RegisterGame(r.Context(), g); err != nil {
+	if err := h.games.RegisterGame(ctx, g); err != nil {
 		os.Remove(final)
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
-		return
+		return entity.Game{}, http.StatusInternalServerError, err.Error()
 	}
 	go func() {
 		_, _ = h.covers.Backfill(context.Background(), 25)
 	}()
-	writeJSON(w, http.StatusCreated, g)
+	return g, http.StatusCreated, ""
 }

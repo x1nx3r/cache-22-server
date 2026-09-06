@@ -38,6 +38,10 @@ func (h *Handler) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/files/{serial}", h.requireAuth(h.serveFile))
 
 	mux.HandleFunc("POST /v1/games/upload", h.requireAdmin(h.uploadGame))
+	mux.HandleFunc("POST /v1/games/upload/init", h.requireAdmin(h.uploadInit))
+	mux.HandleFunc("PUT /v1/games/upload/chunk", h.requireAdmin(h.uploadChunk))
+	mux.HandleFunc("POST /v1/games/upload/complete", h.requireAdmin(h.uploadComplete))
+	mux.HandleFunc("DELETE /v1/games/upload", h.requireAdmin(h.uploadAbort))
 	mux.HandleFunc("POST /v1/scan", h.requireAdmin(h.scan))
 
 	mux.HandleFunc("GET /v1/admin/users", h.requireAdmin(h.adminListUsers))

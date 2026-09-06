@@ -60,36 +60,58 @@ templ GameTable(games []entity.Game, isAdmin bool) {
 							tile.addEventListener('click', function() { input.click(); });
 							input.addEventListener('change', function() {
 								if (!input.files.length) return;
+								var file = input.files[0];
 								var track = document.getElementById('upload-track');
 								var bar = document.getElementById('upload-bar');
-								var data = new FormData();
-								data.append('file', input.files[0]);
-								var xhr = new XMLHttpRequest();
-								xhr.open('POST', '/v1/games/upload');
-								xhr.upload.addEventListener('progress', function(e) {
-									if (!e.lengthComputable || !e.total) return;
-									var pct = Math.round(100 * e.loaded / e.total);
+								function setPct(pct, text) {
 									track.classList.remove('hidden');
 									bar.style.width = pct + '%';
 									plus.innerText = pct + '%';
 									plus.classList.remove('text-9xl');
 									plus.classList.add('text-4xl');
-									label.innerText = 'Uploading…';
-								});
-								xhr.addEventListener('load', function() {
-									if (xhr.status === 201) {
-										label.innerText = 'Done. Refreshing…';
-										setTimeout(function() { window.location.reload(); }, 800);
-									} else {
-										plus.innerText = '!';
-										label.innerText = 'Failed: ' + xhr.status;
-									}
-								});
-								xhr.addEventListener('error', function() {
+									label.innerText = text;
+								}
+								function fail(text) {
 									plus.innerText = '!';
-									label.innerText = 'Failed.';
+									label.innerText = text;
+								}
+								var CHUNK = 48 * 1024 * 1024;
+								fetch('/v1/games/upload/init', {
+									method: 'POST',
+									headers: {'Content-Type': 'application/json'},
+									body: JSON.stringify({filename: file.name, size: file.size}),
+								}).then(function(res) {
+									if (!res.ok) throw new Error('init: ' + res.status);
+									return res.json();
+								}).then(function(init) {
+									var offset = 0;
+									function next() {
+										if (offset >= file.size) {
+											return fetch('/v1/games/upload/complete', {
+												method: 'POST',
+												headers: {'Content-Type': 'application/json'},
+												body: JSON.stringify({id: init.uploadId}),
+											}).then(function(res) {
+												if (!res.ok) throw new Error('complete: ' + res.status);
+												label.innerText = 'Done. Refreshing…';
+												setTimeout(function() { window.location.reload(); }, 800);
+											});
+										}
+										var end = Math.min(offset + CHUNK, file.size);
+										return fetch('/v1/games/upload/chunk?id=' + init.uploadId + '&offset=' + offset, {
+											method: 'PUT',
+											body: file.slice(offset, end),
+										}).then(function(res) {
+											if (!res.ok) throw new Error('chunk: ' + res.status);
+											offset = end;
+											setPct(Math.round(100 * offset / file.size), 'Uploading…');
+											return next();
+										});
+									}
+									return next();
+								}).catch(function(err) {
+									fail('Failed: ' + err.message);
 								});
-								xhr.send(data);
 							});
 						})();
 					</script>
