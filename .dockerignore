@@ -1,0 +1,6 @@
+data/
+bin/
+.git/
+*.db
+*.db-journal
+.env

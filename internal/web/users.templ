@@ -1,0 +1,64 @@
+package web
+
+import "github.com/cache-22/cache-22-server/internal/entity"
+
+templ Users(me entity.User, users []entity.User, formErr string) {
+	@Layout("Users", true, true) {
+		<p class="text-xs font-mono font-bold uppercase tracking-widest text-[var(--fg-muted)]">Access control</p>
+		<h1 class="font-display mt-2 text-4xl font-black uppercase tracking-tight">Users</h1>
+		if formErr != "" {
+			<p class="mt-4 border-2 border-[var(--red)] p-3 text-xs font-bold uppercase tracking-wider text-[var(--red)]">{ formErr }</p>
+		}
+		<div class="mt-8 border-2 border-[var(--border)] bg-[var(--bg)] shadow-[4px_4px_0px_0px_var(--border)] overflow-x-auto">
+			<table class="w-full text-sm">
+				<thead>
+					<tr class="border-b-2 border-[var(--border)] text-left">
+						<th class="px-4 py-3 text-xs font-mono font-bold uppercase tracking-widest text-[var(--fg-muted)]">Username</th>
+						<th class="px-4 py-3 text-xs font-mono font-bold uppercase tracking-widest text-[var(--fg-muted)]">Role</th>
+						<th class="px-4 py-3"></th>
+					</tr>
+				</thead>
+				<tbody>
+					for _, u := range users {
+						<tr class="border-b border-[var(--bg-subtle)] last:border-0">
+							<td class="px-4 py-3 font-bold">{ u.Username }</td>
+							<td class="px-4 py-3">
+								if u.IsAdmin {
+									<span class="border-2 border-[var(--border)] px-2 py-0.5 text-xs font-mono font-bold uppercase text-[var(--accent)]">admin</span>
+								} else {
+									<span class="border-2 border-[var(--bg-subtle)] px-2 py-0.5 text-xs font-mono font-bold uppercase text-[var(--fg-muted)]">player</span>
+								}
+							</td>
+							<td class="px-4 py-3">
+								<span class="flex gap-2 justify-end">
+									if u.ID != me.ID {
+										<form method="post" action={ "/admin/users/" + itoa(u.ID) + "/delete" }>
+											<button type="submit" class="px-3 py-1.5 border-2 border-[var(--red)] text-xs font-bold uppercase tracking-wider text-[var(--red)] hover:bg-[var(--red)] hover:text-[var(--bg)] cursor-pointer">Delete</button>
+										</form>
+									}
+									<form method="post" action={ "/admin/users/" + itoa(u.ID) + "/password" } class="flex gap-2">
+										<input type="password" name="password" placeholder="New password" class="px-3 py-1.5 text-xs border-2 border-[var(--border)] bg-[var(--bg)]"/>
+										<button type="submit" class="px-3 py-1.5 border-2 border-[var(--border)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--bg-subtle)] cursor-pointer">Reset</button>
+									</form>
+								</span>
+							</td>
+						</tr>
+					}
+				</tbody>
+			</table>
+		</div>
+		<form method="post" action="/admin/users" class="mt-6 max-w-xl border-2 border-[var(--border)] bg-[var(--bg)] p-6 shadow-[4px_4px_0px_0px_var(--border)]">
+			<h2 class="font-display text-xl font-black uppercase">New user</h2>
+			<div class="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+				<input type="text" name="username" placeholder="Username" class="px-3 py-2 text-sm border-2 border-[var(--border)] bg-[var(--bg)]"/>
+				<input type="password" name="password" placeholder="Password (8+ characters)" class="px-3 py-2 text-sm border-2 border-[var(--border)] bg-[var(--bg)]"/>
+			</div>
+			<div class="mt-4 flex items-center justify-between">
+				<label class="text-xs font-mono font-bold uppercase tracking-widest text-[var(--fg-muted)] flex items-center gap-2 cursor-pointer">
+					<input type="checkbox" name="is_admin" class="h-4 w-4 accent-[#c084fc]"/> Admin
+				</label>
+				<button type="submit" class="inline-flex h-10 items-center border-2 border-[var(--border)] bg-[var(--fg)] px-6 text-xs font-bold uppercase tracking-wider text-[var(--bg)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none shadow-[4px_4px_0px_0px_var(--border)] cursor-pointer">Create</button>
+			</div>
+		</form>
+	}
+}

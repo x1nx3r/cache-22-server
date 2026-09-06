@@ -1,0 +1,46 @@
+package web
+
+templ Layout(title string, loggedIn bool, isAdmin bool) {
+	<!DOCTYPE html>
+	<html lang="en">
+		<head>
+			<meta charset="utf-8"/>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<title>{ title } — Cache-22</title>
+			<link rel="preconnect" href="https://fonts.googleapis.com"/>
+			<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/>
+			<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800;900&family=Inter:wght@400;500;600;700;800&family=Fira+Code:wght@400;700&display=swap" rel="stylesheet"/>
+			<link rel="stylesheet" href="/static/app.css"/>
+			<script src="/static/vendor/htmx.min.js"></script>
+		</head>
+		<body class="min-h-screen flex flex-col antialiased">
+			<header class="sticky top-0 z-50 w-full border-b-2 border-[var(--border)] bg-[var(--bg)]/95">
+				<div class="mx-auto flex h-14 max-w-5xl items-center justify-between px-6">
+					<a href="/" class="text-sm font-black uppercase tracking-widest text-[var(--fg)] select-none">Cache-22</a>
+					<div class="flex items-center gap-3">
+						<a href="/" class="px-3 py-1.5 border-2 text-xs font-bold uppercase tracking-wider border-transparent text-[var(--fg-muted)] hover:text-[var(--fg)] hover:border-[var(--border)]">Library</a>
+						if isAdmin {
+							<a href="/admin/users" class="px-3 py-1.5 border-2 text-xs font-bold uppercase tracking-wider border-transparent text-[var(--fg-muted)] hover:text-[var(--fg)] hover:border-[var(--border)]">Users</a>
+						}
+						<span
+							class="text-xs font-mono text-[var(--fg-muted)]"
+							hx-get="/v1/health"
+							hx-trigger="load, every 30s"
+							hx-swap="none"
+						>● api</span>
+						if loggedIn {
+							<form method="post" action="/logout">
+								<button type="submit" class="px-3 py-1.5 border-2 border-[var(--border)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--bg-subtle)] active:translate-x-0.5 active:translate-y-0.5 cursor-pointer">Log out</button>
+							</form>
+						} else {
+							<a href="/login" class="px-3 py-1.5 border-2 border-[var(--border)] text-xs font-bold uppercase tracking-wider hover:bg-[var(--bg-subtle)]">Log in</a>
+						}
+					</div>
+				</div>
+			</header>
+			<main class="mx-auto w-full max-w-5xl flex-1 px-6 py-10 animate-fade-up">
+				{ children... }
+			</main>
+		</body>
+	</html>
+}

@@ -1,0 +1,67 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens — goth-brutalist, dark only. */
+:root {
+	--bg:        #0a0a0f;
+	--bg-subtle: #12121a;
+	--fg:        #f4f4f6;
+	--fg-muted:  #9e9eb0;
+	--border:    #f4f4f6;
+	--ring:      #f43f5e;
+	--accent:    #c084fc;
+	--accent-fg: #0a0a0f;
+	--red:       #f43f5e;
+	--green:     #34d399;
+	--yellow:    #f9e2af;
+}
+
+*, *::before, *::after {
+	box-sizing: border-box;
+}
+
+body {
+	background-color: var(--bg);
+	color: var(--fg);
+	font-family: 'Inter', system-ui, -apple-system, sans-serif;
+	line-height: 1.5;
+	background-image:
+		linear-gradient(to right, rgba(244, 63, 94, 0.03) 1px, transparent 1px),
+		linear-gradient(to bottom, rgba(244, 63, 94, 0.03) 1px, transparent 1px);
+	background-size: 24px 24px;
+}
+
+.font-display {
+	font-family: 'Cinzel', Georgia, serif;
+}
+
+.htmx-indicator {
+	opacity: 0;
+	transition: opacity 150ms ease;
+	pointer-events: none;
+}
+.htmx-request .htmx-indicator,
+.htmx-request.htmx-indicator {
+	opacity: 1;
+	pointer-events: auto;
+}
+
+@keyframes fade-up {
+	from {
+		opacity: 0;
+		transform: translateY(16px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.animate-fade-up {
+	animation: fade-up 0.5s ease both;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); }

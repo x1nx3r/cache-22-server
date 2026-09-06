@@ -1,0 +1,44 @@
+package web
+
+import "github.com/cache-22/cache-22-server/internal/entity"
+
+templ Detail(g entity.Game, m entity.Manifest, loggedIn bool, isAdmin bool) {
+	@Layout(g.Title, loggedIn, isAdmin) {
+		<p class="text-xs font-mono font-bold uppercase tracking-widest text-[var(--fg-muted)]"><a href="/" class="hover:text-[var(--fg)]">← Library</a></p>
+		<div class="mt-4 flex flex-col gap-6 sm:flex-row">
+			<img src={ coverURL(g.Serial) } alt="" onerror="this.style.display='none'" class="w-full sm:w-56 shrink-0 self-start border-2 border-[var(--border)] bg-[var(--bg-subtle)] object-cover shadow-[4px_4px_0px_0px_var(--border)]"/>
+			<div>
+				<h1 class="font-display text-4xl font-black uppercase tracking-tight">{ g.Title }</h1>
+				<p class="mt-2 font-mono text-xs text-[var(--fg-muted)]">{ g.Serial }</p>
+			</div>
+		</div>
+		<div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
+			<div class="border-2 border-[var(--border)] bg-[var(--bg)] p-6 shadow-[4px_4px_0px_0px_var(--border)]">
+				<p class="text-xs font-mono font-bold uppercase tracking-widest text-[var(--fg-muted)]">Size</p>
+				<p class="mt-2 font-mono text-sm">{ FormatBytes(g.SizeBytes) }</p>
+			</div>
+			<div class="border-2 border-[var(--border)] bg-[var(--bg)] p-6 shadow-[4px_4px_0px_0px_var(--border)]">
+				<p class="text-xs font-mono font-bold uppercase tracking-widest text-[var(--fg-muted)]">Hash</p>
+				<p class="mt-2 font-mono text-xs break-all">{ g.RedumpHash }</p>
+			</div>
+			<div class="border-2 border-[var(--border)] bg-[var(--bg)] p-6 shadow-[4px_4px_0px_0px_var(--border)]">
+				<p class="text-xs font-mono font-bold uppercase tracking-widest text-[var(--fg-muted)]">Preload</p>
+				<p class="mt-2 font-mono text-sm">{ FormatBytes(bootBytes(m)) } in { len(m.BootRanges) } range(s)</p>
+			</div>
+			<div class="border-2 border-[var(--border)] bg-[var(--bg)] p-6 shadow-[4px_4px_0px_0px_var(--border)]">
+				<p class="text-xs font-mono font-bold uppercase tracking-widest text-[var(--fg-muted)]">Streamable</p>
+				<p class="mt-2">
+					if m.Supported {
+						<span class="border-2 border-[var(--border)] px-3 py-1 text-xs font-mono font-bold uppercase text-[var(--green)]">Raw ISO</span>
+					} else {
+						<span class="border-2 border-[var(--border)] px-3 py-1 text-xs font-mono font-bold uppercase text-[var(--yellow)]">Needs extract — raw .iso only</span>
+					}
+				</p>
+			</div>
+		</div>
+		<div class="mt-8 flex flex-wrap gap-4">
+			<a href={ templ.URL(m.ManifestURL) } class="inline-flex h-10 items-center border-2 border-[var(--border)] px-6 text-xs font-bold uppercase tracking-wider hover:bg-[var(--bg-subtle)]">manifest.json</a>
+			<a href={ templ.URL(m.FileURL) } class="inline-flex h-10 items-center border-2 border-[var(--border)] bg-[var(--fg)] px-6 text-xs font-bold uppercase tracking-wider text-[var(--bg)] hover:bg-[var(--bg-subtle)] hover:text-[var(--fg)] shadow-[4px_4px_0px_0px_var(--border)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none">Full file</a>
+		</div>
+	}
+}

@@ -1,0 +1,110 @@
+package web
+
+import "github.com/cache-22/cache-22-server/internal/entity"
+
+templ Library(games []entity.Game, loggedIn bool, isAdmin bool) {
+	@Layout("Library", loggedIn, isAdmin) {
+		<div class="flex items-end justify-between gap-4 mb-8">
+			<div>
+				<p class="text-xs font-mono font-bold uppercase tracking-widest text-[var(--fg-muted)]">Server library</p>
+				<h1 class="font-display mt-2 text-4xl font-black uppercase tracking-tight">Games</h1>
+			</div>
+			if loggedIn {
+				<button
+					class="inline-flex h-10 items-center border-2 border-[var(--border)] bg-[var(--fg)] px-6 text-xs font-bold uppercase tracking-wider text-[var(--bg)] transition-all hover:bg-[var(--bg-subtle)] hover:text-[var(--fg)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none shadow-[4px_4px_0px_0px_var(--border)] cursor-pointer"
+					hx-post="/scan"
+					hx-target="#game-table"
+					hx-swap="outerHTML"
+					hx-indicator="#scan-spinner"
+				>
+					Rescan
+				</button>
+			} else {
+				<a href="/login" class="inline-flex h-10 items-center border-2 border-[var(--border)] px-6 text-xs font-bold uppercase tracking-wider hover:bg-[var(--bg-subtle)]">Log in to manage</a>
+			}
+		</div>
+		<p id="scan-spinner" class="htmx-indicator text-xs font-mono uppercase tracking-widest text-[var(--fg-muted)] mb-4">Scanning…</p>
+		@GameTable(games, isAdmin)
+	}
+}
+
+templ GameTable(games []entity.Game, isAdmin bool) {
+	<div id="game-table">
+		if len(games) == 0 && !isAdmin {
+			<div class="border-2 border-[var(--border)] bg-[var(--bg)] p-10 text-center shadow-[4px_4px_0px_0px_var(--border)]">
+				<p class="font-display text-xl font-black uppercase">No games found</p>
+				<p class="mt-2 text-xs font-bold uppercase tracking-wider text-[var(--fg-muted)]">Put ISOs in the library folder and hit Rescan.</p>
+			</div>
+		} else {
+			<p class="text-xs font-mono uppercase tracking-widest text-[var(--fg-muted)] mb-4">{ len(games) } game(s)</p>
+			<div class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+				if isAdmin {
+					<div
+						id="upload-tile"
+						class="relative flex min-h-64 cursor-pointer flex-col items-center justify-center gap-2 overflow-hidden border-2 border-dashed border-[var(--fg-muted)] bg-[var(--bg)] p-6 transition-all hover:border-[var(--border)] hover:bg-[var(--bg-subtle)]"
+					>
+						<span id="upload-plus" class="font-display text-9xl font-black leading-none text-[var(--fg-muted)]">+</span>
+						<span id="upload-label" class="text-xs font-mono font-bold uppercase tracking-widest text-[var(--fg-muted)]">Add game</span>
+						<div id="upload-track" class="absolute bottom-0 left-0 hidden h-3 w-full border-t-2 border-[var(--border)]">
+							<div id="upload-bar" class="h-full bg-[var(--accent)]" style="width: 0%"></div>
+						</div>
+						<input id="upload-file" type="file" name="file" accept=".iso" class="hidden"/>
+					</div>
+					<script>
+						(function() {
+							var tile = document.getElementById('upload-tile');
+							var input = document.getElementById('upload-file');
+							var plus = document.getElementById('upload-plus');
+							var label = document.getElementById('upload-label');
+							if (!tile || !input) return;
+							tile.addEventListener('click', function() { input.click(); });
+							input.addEventListener('change', function() {
+								if (!input.files.length) return;
+								var track = document.getElementById('upload-track');
+								var bar = document.getElementById('upload-bar');
+								var data = new FormData();
+								data.append('file', input.files[0]);
+								var xhr = new XMLHttpRequest();
+								xhr.open('POST', '/v1/games/upload');
+								xhr.upload.addEventListener('progress', function(e) {
+									if (!e.lengthComputable || !e.total) return;
+									var pct = Math.round(100 * e.loaded / e.total);
+									track.classList.remove('hidden');
+									bar.style.width = pct + '%';
+									plus.innerText = pct + '%';
+									plus.classList.remove('text-9xl');
+									plus.classList.add('text-4xl');
+									label.innerText = 'Uploading…';
+								});
+								xhr.addEventListener('load', function() {
+									if (xhr.status === 201) {
+										label.innerText = 'Done. Refreshing…';
+										setTimeout(function() { window.location.reload(); }, 800);
+									} else {
+										plus.innerText = '!';
+										label.innerText = 'Failed: ' + xhr.status;
+									}
+								});
+								xhr.addEventListener('error', function() {
+									plus.innerText = '!';
+									label.innerText = 'Failed.';
+								});
+								xhr.send(data);
+							});
+						})();
+					</script>
+				}
+				for _, g := range games {
+					<a href={ templ.URL("/games/" + g.Serial) } class="group border-2 border-[var(--border)] bg-[var(--bg)] shadow-[4px_4px_0px_0px_var(--border)] transition-all hover:-translate-x-0.5 hover:-translate-y-0.5 hover:shadow-[6px_6px_0px_0px_var(--border)]">
+						<img src={ coverURL(g.Serial) } alt="" onerror="this.style.display='none'" loading="lazy" class="aspect-[3/4] w-full border-b-2 border-[var(--border)] bg-[var(--bg-subtle)] object-cover"/>
+						<div class="p-6">
+							<h3 class="text-sm font-extrabold uppercase tracking-tight group-hover:text-[var(--accent)] transition-colors">{ g.Title }</h3>
+							<p class="mt-2 font-mono text-xs text-[var(--fg-muted)]">{ g.Serial }</p>
+							<p class="mt-1 text-xs font-bold text-[var(--fg-muted)]">{ FormatBytes(g.SizeBytes) }</p>
+						</div>
+					</a>
+				}
+			</div>
+		}
+	</div>
+}

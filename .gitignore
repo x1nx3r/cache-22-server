@@ -1,0 +1,19 @@
+# binaries & build output (tailwindcss is fetched separately, see README)
+/bin/
+
+# local env (never commit real secrets)
+/.env
+.env.*.local
+
+# local library data: game ISOs, covers, scratch DBs
+/data/
+
+# go test artifacts
+*.test
+coverage.out
+
+# editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
