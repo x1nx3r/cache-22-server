@@ -31,7 +31,7 @@ func newUploadServer(t *testing.T) (*httptest.Server, *fakeUC, string, string) {
 	dir := t.TempDir()
 	uc := &fakeUC{games: map[string]entity.Game{}}
 	authSvc, adminTok, _ := newTestAuth(t)
-	h := New(uc, scanner.New(dir, stubRepo{}), authSvc, nilCover(t))
+	h := New(uc, scanner.New(dir, stubRepo{}), authSvc, nilCover(t), nilSavesWithDir(t, dir))
 	mux := http.NewServeMux()
 	h.Routes(mux)
 	srv := httptest.NewServer(mux)

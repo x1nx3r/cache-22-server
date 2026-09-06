@@ -9,6 +9,7 @@ import (
 	authusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/auth"
 	coverusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/cover"
 	gameusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/game"
+	saveusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/save"
 	"github.com/x1nx3r/cache-22-server/internal/config"
 	httphandler "github.com/x1nx3r/cache-22-server/internal/handler/http"
 	webhandler "github.com/x1nx3r/cache-22-server/internal/handler/web"
@@ -35,11 +36,13 @@ func Init(cfg config.Config) (*Dependencies, error) {
 	users := db.NewUserRepository(dbConn)
 	sessions := db.NewSessionRepository(dbConn)
 	covers := db.NewCoverRepository(dbConn)
+	saves := db.NewSaveRepository(dbConn)
 	uc := gameusecase.New(games, health)
 	authSvc := authusecase.New(users, sessions, cfg.AdminToken)
 	coverSvc := coverusecase.New(games, covers, igdb.New(cfg.IGDBClient, cfg.IGDBSecret), cfg.CoverDir)
+	saveSvc := saveusecase.New(saves, cfg.SavesDir)
 	sc := scanner.New(cfg.LibraryPath, games)
-	h := httphandler.New(uc, sc, authSvc, coverSvc)
+	h := httphandler.New(uc, sc, authSvc, coverSvc, saveSvc)
 	wh := webhandler.New(uc, sc, authSvc)
 	return &Dependencies{Handler: h, Web: wh, Scanner: sc, Games: games, DB: dbConn}, nil
 }

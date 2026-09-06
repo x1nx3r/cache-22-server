@@ -11,6 +11,7 @@ import (
 	authusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/auth"
 	coverusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/cover"
 	gameusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/game"
+	saveusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/save"
 	"github.com/x1nx3r/cache-22-server/internal/infra/scanner"
 )
 
@@ -19,13 +20,14 @@ type Handler struct {
 	scanner *scanner.Scanner
 	auth    *authusecase.Auth
 	covers  *coverusecase.Cover
+	saves   *saveusecase.Save
 
 	uploadMu    sync.Mutex
 	uploadLocks map[string]*sync.Mutex
 }
 
-func New(games gameusecase.UseCase, sc *scanner.Scanner, auth *authusecase.Auth, covers *coverusecase.Cover) *Handler {
-	return &Handler{games: games, scanner: sc, auth: auth, covers: covers, uploadLocks: map[string]*sync.Mutex{}}
+func New(games gameusecase.UseCase, sc *scanner.Scanner, auth *authusecase.Auth, covers *coverusecase.Cover, saves *saveusecase.Save) *Handler {
+	return &Handler{games: games, scanner: sc, auth: auth, covers: covers, saves: saves, uploadLocks: map[string]*sync.Mutex{}}
 }
 
 // uploadLock serializes meta read-modify-write cycles for one upload session
@@ -66,6 +68,9 @@ func (h *Handler) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("PUT /v1/games/upload/chunk", h.requireAdmin(h.uploadChunk))
 	mux.HandleFunc("POST /v1/games/upload/complete", h.requireAdmin(h.uploadComplete))
 	mux.HandleFunc("DELETE /v1/games/upload", h.requireAdmin(h.uploadAbort))
+	mux.HandleFunc("GET /v1/saves/{serial}/{slot}", h.requireAuth(h.getSave))
+	mux.HandleFunc("HEAD /v1/saves/{serial}/{slot}", h.requireAuth(h.headSave))
+	mux.HandleFunc("PUT /v1/saves/{serial}/{slot}", h.requireAuth(h.putSave))
 	mux.HandleFunc("POST /v1/scan", h.requireAdmin(h.scan))
 
 	mux.HandleFunc("GET /v1/admin/users", h.requireAdmin(h.adminListUsers))

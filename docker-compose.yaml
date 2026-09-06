@@ -23,6 +23,7 @@ services:
       DB_URL: postgres://cache22:${POSTGRES_PASSWORD:-cache22}@postgres:5432/cache22?sslmode=disable
       LIBRARY_PATH: /data/library
       COVER_DIR: /data/covers
+      SAVES_DIR: /data/saves
       IGDB_CLIENT_ID: ${IGDB_CLIENT_ID:-}
       IGDB_CLIENT_SECRET: ${IGDB_CLIENT_SECRET:-}
       ADMIN_TOKEN: ${ADMIN_TOKEN:-dev-admin-token}

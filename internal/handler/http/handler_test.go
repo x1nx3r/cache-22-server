@@ -14,6 +14,7 @@ import (
 
 	coverusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/cover"
 	gameusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/game"
+	saveusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/save"
 	"github.com/x1nx3r/cache-22-server/internal/entity"
 	"github.com/x1nx3r/cache-22-server/internal/infra/scanner"
 )
@@ -82,7 +83,7 @@ func newTestServer(t *testing.T, uc gameusecase.UseCase) (*httptest.Server, stri
 	t.Helper()
 	authSvc, adminTok, playerTok := newTestAuth(t)
 	sc := scanner.New(t.TempDir(), fakeRepo{})
-	h := New(uc, sc, authSvc, nilCover(t))
+	h := New(uc, sc, authSvc, nilCover(t), nilSaves(t))
 	mux := http.NewServeMux()
 	h.Routes(mux)
 	srv := httptest.NewServer(mux)
@@ -93,6 +94,37 @@ func newTestServer(t *testing.T, uc gameusecase.UseCase) (*httptest.Server, stri
 func nilCover(t *testing.T) *coverusecase.Cover {
 	t.Helper()
 	return coverusecase.New(nilGames{}, nilCovers{}, nil, t.TempDir())
+}
+
+type stubSaveStore struct {
+	rows map[string]entity.Save
+}
+
+func saveKey(userID int64, serial string, slot int) string {
+	return string(rune(userID)) + "|" + serial + "|" + string(rune(slot))
+}
+
+func (s *stubSaveStore) Get(_ context.Context, userID int64, serial string, slot int) (entity.Save, error) {
+	m, ok := s.rows[saveKey(userID, serial, slot)]
+	if !ok {
+		return entity.Save{}, sql.ErrNoRows
+	}
+	return m, nil
+}
+
+func (s *stubSaveStore) Upsert(_ context.Context, m entity.Save) error {
+	s.rows[saveKey(m.UserID, m.Serial, m.Slot)] = m
+	return nil
+}
+
+func nilSaves(t *testing.T) *saveusecase.Save {
+	t.Helper()
+	return saveusecase.New(&stubSaveStore{rows: map[string]entity.Save{}}, t.TempDir())
+}
+
+func nilSavesWithDir(t *testing.T, dir string) *saveusecase.Save {
+	t.Helper()
+	return saveusecase.New(&stubSaveStore{rows: map[string]entity.Save{}}, filepath.Join(dir, "saves"))
 }
 
 type nilGames struct{}

@@ -63,7 +63,7 @@ func TestServeCover(t *testing.T) {
 	}}
 	authSvc, _, playerTok := newTestAuth(t)
 	h := New(&fakeUC{}, scanner.New(t.TempDir(), fakeRepo{}), authSvc,
-		coverusecase.New(nilGames{}, covers, nil, dir))
+		coverusecase.New(nilGames{}, covers, nil, dir), nilSaves(t))
 	mux := http.NewServeMux()
 	h.Routes(mux)
 	srv := httptest.NewServer(mux)
@@ -93,7 +93,7 @@ func TestServeCover(t *testing.T) {
 
 func TestAdminBackfillCovers(t *testing.T) {
 	authSvc, adminTok, playerTok := newTestAuth(t)
-	h := New(&fakeUC{}, scanner.New(t.TempDir(), fakeRepo{}), authSvc, nilCover(t))
+	h := New(&fakeUC{}, scanner.New(t.TempDir(), fakeRepo{}), authSvc, nilCover(t), nilSaves(t))
 	mux := http.NewServeMux()
 	h.Routes(mux)
 	srv := httptest.NewServer(mux)

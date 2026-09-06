@@ -53,4 +53,15 @@ CREATE TABLE IF NOT EXISTS covers (
 	image_path TEXT NOT NULL DEFAULT '',
 	fetched_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+CREATE TABLE IF NOT EXISTS user_saves (
+	user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+	serial TEXT NOT NULL,
+	slot SMALLINT NOT NULL,
+	sha256 TEXT NOT NULL DEFAULT '',
+	size_bytes BIGINT NOT NULL DEFAULT 0,
+	public BOOLEAN NOT NULL DEFAULT FALSE,
+	updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	PRIMARY KEY (user_id, serial, slot)
+);
+CREATE INDEX IF NOT EXISTS idx_user_saves_serial ON user_saves(serial);
 `

@@ -10,6 +10,7 @@ type Config struct {
 	LibraryPath string
 	AdminToken  string
 	CoverDir    string
+	SavesDir    string
 	IGDBClient  string
 	IGDBSecret  string
 }
@@ -22,6 +23,7 @@ func New() Config {
 		DBURL:       envOr("DB_URL", "postgres://cache22:cache22@localhost:5432/cache22?sslmode=disable"),
 		LibraryPath: envOr("LIBRARY_PATH", "./data/library"),
 		CoverDir:    envOr("COVER_DIR", "./data/covers"),
+		SavesDir:    envOr("SAVES_DIR", "./data/saves"),
 		IGDBClient:  envOr("IGDB_CLIENT_ID", ""),
 		IGDBSecret:  envOr("IGDB_CLIENT_SECRET", ""),
 		AdminToken:  envOr("ADMIN_TOKEN", ""),
