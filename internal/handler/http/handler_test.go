@@ -117,6 +117,11 @@ func (s *stubSaveStore) Upsert(_ context.Context, m entity.Save) error {
 	return nil
 }
 
+func (s *stubSaveStore) Delete(_ context.Context, userID int64, serial string, slot int) error {
+	delete(s.rows, saveKey(userID, serial, slot))
+	return nil
+}
+
 func nilSaves(t *testing.T) *saveusecase.Save {
 	t.Helper()
 	return saveusecase.New(&stubSaveStore{rows: map[string]entity.Save{}}, t.TempDir())

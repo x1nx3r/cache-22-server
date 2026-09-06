@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/x1nx3r/cache-22-server/internal/entity"
@@ -19,6 +20,8 @@ const BackupsKept = 3
 type Saves interface {
 	Get(ctx context.Context, userID int64, serial string, slot int) (entity.Save, error)
 	Upsert(ctx context.Context, s entity.Save) error
+
+	Delete(ctx context.Context, userID int64, serial string, slot int) error
 }
 
 type Save struct {
@@ -97,4 +100,18 @@ func (s *Save) pruneBackups(path string) {
 		os.Remove(baks[0])
 		baks = baks[1:]
 	}
+}
+
+// Delete removes the save, its backups and its metadata row.
+func (s *Save) Delete(ctx context.Context, userID int64, serial string, slot int) error {
+	path := s.filePath(userID, serial, slot)
+	os.Remove(path)
+	entries, _ := os.ReadDir(filepath.Dir(path))
+	base := filepath.Base(path) + "."
+	for _, e := range entries {
+		if !e.IsDir() && strings.HasPrefix(e.Name(), base) {
+			os.Remove(filepath.Join(filepath.Dir(path), e.Name()))
+		}
+	}
+	return s.repo.Delete(ctx, userID, serial, slot)
 }

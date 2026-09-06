@@ -69,3 +69,18 @@ func TestGetMissing(t *testing.T) {
 		t.Error("missing save must error")
 	}
 }
+
+func TestDelete(t *testing.T) {
+	dir := t.TempDir()
+	svc := New(&memStore{rows: map[string]entity.Save{}}, dir)
+	ctx := context.Background()
+	if _, err := svc.Put(ctx, 7, "GONE", 1, []byte{9}); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Delete(ctx, 7, "GONE", 1); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := svc.Get(ctx, 7, "GONE", 1); err == nil {
+		t.Error("deleted save must be gone")
+	}
+}

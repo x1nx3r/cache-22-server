@@ -71,6 +71,7 @@ func (h *Handler) Routes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/saves/{serial}/{slot}", h.requireAuth(h.getSave))
 	mux.HandleFunc("HEAD /v1/saves/{serial}/{slot}", h.requireAuth(h.headSave))
 	mux.HandleFunc("PUT /v1/saves/{serial}/{slot}", h.requireAuth(h.putSave))
+	mux.HandleFunc("DELETE /v1/saves/{serial}/{slot}", h.requireAuth(h.deleteSave))
 	mux.HandleFunc("POST /v1/scan", h.requireAdmin(h.scan))
 
 	mux.HandleFunc("GET /v1/admin/users", h.requireAdmin(h.adminListUsers))

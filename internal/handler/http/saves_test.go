@@ -97,3 +97,23 @@ func TestSaveRejects(t *testing.T) {
 		t.Errorf("noauth = %d, want 401", noauth.StatusCode)
 	}
 }
+
+func TestSaveDelete(t *testing.T) {
+	srv, _, _, adminTok := newUploadServer(t)
+	data := []byte("bye")
+	put := saveReq(t, "PUT", srv.URL+"/v1/saves/DEL-1/2", adminTok, data)
+	put.Body.Close()
+	if put.StatusCode != 200 {
+		t.Fatalf("put = %d", put.StatusCode)
+	}
+	del := saveReq(t, "DELETE", srv.URL+"/v1/saves/DEL-1/2", adminTok, nil)
+	del.Body.Close()
+	if del.StatusCode != 200 {
+		t.Fatalf("delete = %d", del.StatusCode)
+	}
+	get := saveReq(t, "GET", srv.URL+"/v1/saves/DEL-1/2", adminTok, nil)
+	get.Body.Close()
+	if get.StatusCode != 404 {
+		t.Errorf("after delete get = %d, want 404", get.StatusCode)
+	}
+}

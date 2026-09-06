@@ -34,3 +34,10 @@ SET sha256 = excluded.sha256, size_bytes = excluded.size_bytes, updated_at = NOW
 `, s.UserID, s.Serial, s.Slot, s.SHA256, s.Size, s.Public)
 	return err
 }
+
+func (r *SaveRepository) Delete(ctx context.Context, userID int64, serial string, slot int) error {
+	_, err := r.db.ExecContext(ctx,
+		`DELETE FROM user_saves WHERE user_id = $1 AND serial = $2 AND slot = $3`,
+		userID, serial, slot)
+	return err
+}

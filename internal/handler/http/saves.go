@@ -84,3 +84,21 @@ func (h *Handler) putSave(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, meta)
 }
+
+func (h *Handler) deleteSave(w http.ResponseWriter, r *http.Request) {
+	u, ok := UserFrom(r.Context())
+	if !ok {
+		writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "unauthorized"})
+		return
+	}
+	serial, slot, valid := saveSlot(r)
+	if !valid {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "bad serial or slot"})
+		return
+	}
+	if err := h.saves.Delete(r.Context(), u.ID, serial, slot); err != nil {
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
