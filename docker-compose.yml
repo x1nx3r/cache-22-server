@@ -4,10 +4,8 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: cache22
-      POSTGRES_PASSWORD: cache22
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cache22}
       POSTGRES_DB: cache22
-    ports:
-      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -18,23 +16,27 @@ services:
 
   server:
     build: .
-    ports:
-      - "8080:8080"
     environment:
-      ENV: dev
+      ENV: ${ENV:-dev}
       SERVICE_NAME: cache-22-server
       HTTP_PORT: 8080
-      DB_URL: postgres://cache22:cache22@postgres:5432/cache22?sslmode=disable
+      DB_URL: postgres://cache22:${POSTGRES_PASSWORD:-cache22}@postgres:5432/cache22?sslmode=disable
       LIBRARY_PATH: /data/library
       COVER_DIR: /data/covers
       IGDB_CLIENT_ID: ${IGDB_CLIENT_ID:-}
       IGDB_CLIENT_SECRET: ${IGDB_CLIENT_SECRET:-}
       ADMIN_TOKEN: ${ADMIN_TOKEN:-dev-admin-token}
     volumes:
-      - ./data:/data
+      - librarydata:/data
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/v1/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
 
 volumes:
   pgdata:
+  librarydata:
