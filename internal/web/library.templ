@@ -76,6 +76,8 @@ templ GameTable(games []entity.Game, isAdmin bool) {
 									label.innerText = text;
 								}
 								var CHUNK = 48 * 1024 * 1024;
+								var WORKERS = 4;
+								var RETRIES = 3;
 								fetch('/v1/games/upload/init', {
 									method: 'POST',
 									headers: {'Content-Type': 'application/json'},
@@ -84,31 +86,49 @@ templ GameTable(games []entity.Game, isAdmin bool) {
 									if (!res.ok) throw new Error('init: ' + res.status);
 									return res.json();
 								}).then(function(init) {
-									var offset = 0;
-									function next() {
-										if (offset >= file.size) {
-											return fetch('/v1/games/upload/complete', {
-												method: 'POST',
-												headers: {'Content-Type': 'application/json'},
-												body: JSON.stringify({id: init.uploadId}),
-											}).then(function(res) {
-												if (!res.ok) throw new Error('complete: ' + res.status);
-												label.innerText = 'Done. Refreshing…';
-												setTimeout(function() { window.location.reload(); }, 800);
-											});
-										}
+									var offsets = [];
+									for (var off = 0; off < file.size; off += CHUNK) offsets.push(off);
+									var next = 0;
+									var sent = 0;
+									var failed = null;
+									function put(offset, attempt) {
 										var end = Math.min(offset + CHUNK, file.size);
 										return fetch('/v1/games/upload/chunk?id=' + init.uploadId + '&offset=' + offset, {
 											method: 'PUT',
 											body: file.slice(offset, end),
 										}).then(function(res) {
 											if (!res.ok) throw new Error('chunk: ' + res.status);
-											offset = end;
-											setPct(Math.round(100 * offset / file.size), 'Uploading…');
-											return next();
+											sent += end - offset;
+											setPct(Math.round(100 * sent / file.size), 'Uploading…');
+										}).catch(function(err) {
+											if (attempt < RETRIES) return put(offset, attempt + 1);
+											throw err;
 										});
 									}
-									return next();
+									function worker() {
+										if (failed || next >= offsets.length) return Promise.resolve();
+										var off = offsets[next++];
+										return put(off, 1).then(worker).catch(function(err) {
+											failed = err;
+										});
+									}
+									var pool = [];
+									for (var w = 0; w < Math.min(WORKERS, offsets.length); w++) pool.push(worker());
+									return Promise.all(pool).then(function() {
+										if (failed) {
+											fetch('/v1/games/upload?id=' + init.uploadId, {method: 'DELETE'});
+											throw failed;
+										}
+										return fetch('/v1/games/upload/complete', {
+											method: 'POST',
+											headers: {'Content-Type': 'application/json'},
+											body: JSON.stringify({id: init.uploadId}),
+										});
+									}).then(function(res) {
+										if (!res.ok) throw new Error('complete: ' + res.status);
+										label.innerText = 'Done. Refreshing…';
+										setTimeout(function() { window.location.reload(); }, 800);
+									});
 								}).catch(function(err) {
 									fail('Failed: ' + err.message);
 								});

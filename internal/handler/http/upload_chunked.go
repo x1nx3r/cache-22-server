@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -198,9 +199,26 @@ func (h *Handler) uploadChunk(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, maxChunkBytes)
 	defer r.Body.Close()
 	libraryDir := h.scanner.LibraryDir()
+	// Read the network body BEFORE taking the per-upload lock so parallel
+	// chunks overlap in flight; only the meta read-modify-write serializes.
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "interrupted chunk"})
+		return
+	}
+	if len(body) == 0 {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "empty chunk"})
+		return
+	}
+	unlock := h.uploadLock(id)
+	defer unlock()
 	m, err := readMeta(libraryDir, id)
 	if err != nil {
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "unknown upload"})
+		return
+	}
+	if offset+int64(len(body)) > m.Size {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "chunk past end of file"})
 		return
 	}
 	f, err := os.OpenFile(dataPath(libraryDir, id), os.O_WRONLY, 0o644)
@@ -209,28 +227,19 @@ func (h *Handler) uploadChunk(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	defer f.Close()
-	var written int64
-	buf := make([]byte, 1<<20)
-	for {
-		n, rerr := r.Body.Read(buf)
-		if n > 0 {
-			if offset+written+int64(n) > m.Size {
-				writeJSON(w, http.StatusBadRequest, map[string]string{"error": "chunk past end of file"})
-				return
-			}
-			if _, werr := f.WriteAt(buf[:n], offset+written); werr != nil {
-				writeJSON(w, http.StatusInternalServerError, map[string]string{"error": werr.Error()})
-				return
-			}
-			written += int64(n)
+	written := int64(0)
+	for len(body) > 0 {
+		n, werr := f.WriteAt(body, offset+written)
+		if werr != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": werr.Error()})
+			return
 		}
-		if rerr != nil {
-			break
+		if n == 0 {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "short write"})
+			return
 		}
-	}
-	if written == 0 {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "empty chunk"})
-		return
+		body = body[n:]
+		written += int64(n)
 	}
 	complete := mergeRange(&m, offset, offset+written)
 	if err := writeMeta(libraryDir, m); err != nil {
@@ -252,18 +261,23 @@ func (h *Handler) uploadComplete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	libraryDir := h.scanner.LibraryDir()
+	unlock := h.uploadLock(in.ID)
 	m, err := readMeta(libraryDir, in.ID)
 	if err != nil {
+		unlock()
 		writeJSON(w, http.StatusNotFound, map[string]string{"error": "unknown upload"})
 		return
 	}
 	covered := len(m.Ranges) == 1 && m.Ranges[0][0] == 0 && m.Ranges[0][1] == m.Size
 	if !covered {
+		unlock()
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "incomplete upload"})
 		return
 	}
 	g, code, msg := h.finalizeUpload(r.Context(), dataPath(libraryDir, in.ID), m.Filename, m.Title)
 	os.RemoveAll(filepath.Join(uploadsDir(libraryDir), in.ID))
+	unlock()
+	h.dropUploadLock(in.ID)
 	if code != http.StatusCreated {
 		writeJSON(w, code, map[string]string{"error": msg})
 		return
@@ -278,6 +292,7 @@ func (h *Handler) uploadAbort(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	os.RemoveAll(filepath.Join(uploadsDir(h.scanner.LibraryDir()), id))
+	h.dropUploadLock(id)
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 

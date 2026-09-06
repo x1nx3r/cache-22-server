@@ -3,11 +3,13 @@ package httphandler
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
+	"sync"
 	"testing"
 
 	"github.com/x1nx3r/cache-22-server/internal/entity"
@@ -181,6 +183,79 @@ func TestChunkedUploadAbort(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(dir, ".uploads", out.UploadID)); !os.IsNotExist(err) {
 		t.Error("upload dir must be gone after abort")
+	}
+}
+
+func TestChunkedUploadParallel(t *testing.T) {
+	srv, _, dir, adminTok := newUploadServer(t)
+	content := bytes.Repeat([]byte("0123456789abcdef"), 5000)
+
+	res := doJSON(t, "POST", srv.URL+"/v1/games/upload/init", adminTok,
+		map[string]any{"filename": "Parallel.iso", "size": len(content)})
+	var initOut struct {
+		UploadID string `json:"uploadId"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&initOut); err != nil {
+		t.Fatal(err)
+	}
+	res.Body.Close()
+
+	const workers = 8
+	const step = 4096
+	type job struct{ offset int }
+	jobs := make(chan job, 64)
+	for off := 0; off < len(content); off += step {
+		jobs <- job{off}
+	}
+	close(jobs)
+	errs := make(chan error, workers)
+	var wg sync.WaitGroup
+	for w := 0; w < workers; w++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			for j := range jobs {
+				end := j.offset + step
+				if end > len(content) {
+					end = len(content)
+				}
+				req, _ := http.NewRequest("PUT",
+					srv.URL+"/v1/games/upload/chunk?id="+initOut.UploadID+"&offset="+itoa(j.offset),
+					bytes.NewReader(content[j.offset:end]))
+				req.Header.Set("Authorization", "Bearer "+adminTok)
+				r, err := http.DefaultClient.Do(req)
+				if err != nil {
+					errs <- err
+					return
+				}
+				io.Copy(io.Discard, r.Body)
+				r.Body.Close()
+				if r.StatusCode != 200 {
+					errs <- fmt.Errorf("chunk %d = %d", j.offset, r.StatusCode)
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		t.Fatal(err)
+	}
+
+	done := doJSON(t, "POST", srv.URL+"/v1/games/upload/complete", adminTok,
+		map[string]string{"id": initOut.UploadID})
+	defer done.Body.Close()
+	if done.StatusCode != 201 {
+		b, _ := io.ReadAll(done.Body)
+		t.Fatalf("parallel complete = %d: %s", done.StatusCode, b)
+	}
+	saved, err := os.ReadFile(filepath.Join(dir, "Parallel.iso"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(saved, content) {
+		t.Error("parallel reassembled bytes differ")
 	}
 }
 

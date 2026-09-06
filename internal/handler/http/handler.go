@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"sync"
 
 	authusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/auth"
 	coverusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/cover"
@@ -18,10 +19,33 @@ type Handler struct {
 	scanner *scanner.Scanner
 	auth    *authusecase.Auth
 	covers  *coverusecase.Cover
+
+	uploadMu    sync.Mutex
+	uploadLocks map[string]*sync.Mutex
 }
 
 func New(games gameusecase.UseCase, sc *scanner.Scanner, auth *authusecase.Auth, covers *coverusecase.Cover) *Handler {
-	return &Handler{games: games, scanner: sc, auth: auth, covers: covers}
+	return &Handler{games: games, scanner: sc, auth: auth, covers: covers, uploadLocks: map[string]*sync.Mutex{}}
+}
+
+// uploadLock serializes meta read-modify-write cycles for one upload session
+// so parallel chunk PUTs cannot lose each other's range records.
+func (h *Handler) uploadLock(id string) func() {
+	h.uploadMu.Lock()
+	l, ok := h.uploadLocks[id]
+	if !ok {
+		l = &sync.Mutex{}
+		h.uploadLocks[id] = l
+	}
+	h.uploadMu.Unlock()
+	l.Lock()
+	return l.Unlock
+}
+
+func (h *Handler) dropUploadLock(id string) {
+	h.uploadMu.Lock()
+	delete(h.uploadLocks, id)
+	h.uploadMu.Unlock()
 }
 
 func (h *Handler) Routes(mux *http.ServeMux) {
