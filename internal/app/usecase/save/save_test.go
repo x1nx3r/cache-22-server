@@ -30,6 +30,11 @@ func (m *memStore) Upsert(_ context.Context, s entity.Save) error {
 	return nil
 }
 
+func (m *memStore) Delete(_ context.Context, u int64, s string, slot int) error {
+	delete(m.rows, mkey(u, s, slot))
+	return nil
+}
+
 func TestPutRotatesBackups(t *testing.T) {
 	dir := t.TempDir()
 	svc := New(&memStore{rows: map[string]entity.Save{}}, dir)
