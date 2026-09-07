@@ -165,6 +165,38 @@ func TestChunkedUploadRejects(t *testing.T) {
 	}
 }
 
+func TestChunkedUploadReplacesStaleSession(t *testing.T) {
+	srv, _, dir, adminTok := newUploadServer(t)
+	first := doJSON(t, "POST", srv.URL+"/v1/games/upload/init", adminTok,
+		map[string]any{"filename": "Stale.iso", "size": 100})
+	var out struct {
+		UploadID string `json:"uploadId"`
+	}
+	if err := json.NewDecoder(first.Body).Decode(&out); err != nil {
+		t.Fatal(err)
+	}
+	first.Body.Close()
+
+	second := doJSON(t, "POST", srv.URL+"/v1/games/upload/init", adminTok,
+		map[string]any{"filename": "Stale.iso", "size": 100})
+	if second.StatusCode != http.StatusCreated {
+		b, _ := io.ReadAll(second.Body)
+		second.Body.Close()
+		t.Fatalf("same-file re-init = %d, want 201: %s", second.StatusCode, b)
+	}
+	second.Body.Close()
+	if _, err := os.Stat(filepath.Join(dir, ".uploads", out.UploadID)); !os.IsNotExist(err) {
+		t.Error("stale session dir must be replaced")
+	}
+
+	diff := doJSON(t, "POST", srv.URL+"/v1/games/upload/init", adminTok,
+		map[string]any{"filename": "Stale.iso", "size": 200})
+	diff.Body.Close()
+	if diff.StatusCode != http.StatusConflict {
+		t.Errorf("different-size init = %d, want 409", diff.StatusCode)
+	}
+}
+
 func TestChunkedUploadAbort(t *testing.T) {
 	srv, _, dir, adminTok := newUploadServer(t)
 	res := doJSON(t, "POST", srv.URL+"/v1/games/upload/init", adminTok,

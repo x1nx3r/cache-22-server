@@ -155,10 +155,19 @@ func (h *Handler) uploadInit(w http.ResponseWriter, r *http.Request) {
 	sweepStaleUploads(libraryDir, h.dropUploadLock)
 	if entries, err := os.ReadDir(uploadsDir(libraryDir)); err == nil {
 		for _, e := range entries {
-			if m, err := readMeta(libraryDir, e.Name()); err == nil && m.Serial == serial {
-				writeJSON(w, http.StatusConflict, map[string]string{"error": "upload already in progress for this game"})
-				return
+			m, err := readMeta(libraryDir, e.Name())
+			if err != nil || m.Serial != serial {
+				continue
 			}
+			if m.Size == in.Size {
+				// A dead session for the same file would otherwise lock the
+				// serial for a day; replace it with this fresh attempt.
+				os.RemoveAll(filepath.Join(uploadsDir(libraryDir), e.Name()))
+				h.dropUploadLock(e.Name())
+				continue
+			}
+			writeJSON(w, http.StatusConflict, map[string]string{"error": "another upload for this game is in progress (different file)"})
+			return
 		}
 	}
 	id, err := newUploadID()

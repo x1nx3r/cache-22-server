@@ -78,13 +78,18 @@ templ GameTable(games []entity.Game, isAdmin bool) {
 								var CHUNK = 48 * 1024 * 1024;
 								var WORKERS = 4;
 								var RETRIES = 3;
+								function check(res, what) {
+									if (res.ok) return res.json();
+									return res.json().catch(function() { return {}; }).then(function(b) {
+										throw new Error(b.error || (what + ': ' + res.status));
+									});
+								}
 								fetch('/v1/games/upload/init', {
 									method: 'POST',
 									headers: {'Content-Type': 'application/json'},
 									body: JSON.stringify({filename: file.name, size: file.size}),
 								}).then(function(res) {
-									if (!res.ok) throw new Error('init: ' + res.status);
-									return res.json();
+									return check(res, 'init');
 								}).then(function(init) {
 									var offsets = [];
 									for (var off = 0; off < file.size; off += CHUNK) offsets.push(off);
@@ -125,7 +130,8 @@ templ GameTable(games []entity.Game, isAdmin bool) {
 											body: JSON.stringify({id: init.uploadId}),
 										});
 									}).then(function(res) {
-										if (!res.ok) throw new Error('complete: ' + res.status);
+										return check(res, 'complete');
+									}).then(function() {
 										label.innerText = 'Done. Refreshing…';
 										setTimeout(function() { window.location.reload(); }, 800);
 									});
