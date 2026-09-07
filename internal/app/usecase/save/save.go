@@ -72,7 +72,14 @@ func (s *Save) Put(ctx context.Context, userID int64, serial string, slot int, d
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return entity.Save{}, err
 	}
-	if err := os.WriteFile(path, data, 0o644); err != nil {
+	// Write-then-rename so a crash mid-write leaves the previous card
+	// intact instead of a truncated file.
+	tmp := fmt.Sprintf("%s.tmp.%d", path, time.Now().UnixNano())
+	if err := os.WriteFile(tmp, data, 0o644); err != nil {
+		return entity.Save{}, err
+	}
+	if err := os.Rename(tmp, path); err != nil {
+		os.Remove(tmp)
 		return entity.Save{}, err
 	}
 	meta := entity.Save{UserID: userID, Serial: serial, Slot: slot,
@@ -91,7 +98,7 @@ func (s *Save) pruneBackups(path string) {
 	base := filepath.Base(path) + "."
 	var baks []string
 	for _, e := range entries {
-		if !e.IsDir() && len(e.Name()) > len(base) && e.Name()[:len(base)] == base {
+		if !e.IsDir() && strings.HasSuffix(e.Name(), ".bak") && len(e.Name()) > len(base) && e.Name()[:len(base)] == base {
 			baks = append(baks, filepath.Join(filepath.Dir(path), e.Name()))
 		}
 	}

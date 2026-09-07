@@ -35,7 +35,7 @@ func (h *Handler) authSetup(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, authusecase.ErrBadUsername), errors.Is(err, authusecase.ErrWeakPassword):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 	case err != nil:
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 	default:
 		writeJSON(w, http.StatusCreated, u)
 	}
@@ -55,7 +55,7 @@ func (h *Handler) authLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"token": token, "user": u})
@@ -74,7 +74,7 @@ func (h *Handler) authMe(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) adminListUsers(w http.ResponseWriter, r *http.Request) {
 	users, err := h.auth.ListUsers(r.Context())
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"users": users})
@@ -94,7 +94,7 @@ func (h *Handler) adminCreateUser(w http.ResponseWriter, r *http.Request) {
 	case errors.Is(err, authusecase.ErrBadUsername), errors.Is(err, authusecase.ErrWeakPassword):
 		writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 	case err != nil:
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 	default:
 		writeJSON(w, http.StatusCreated, u)
 	}
@@ -117,7 +117,7 @@ func (h *Handler) adminDeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.auth.DeleteUser(r.Context(), id); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -140,7 +140,7 @@ func (h *Handler) adminResetPassword(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 			return
 		}
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -164,7 +164,7 @@ func (h *Handler) adminSetAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.auth.SetAdmin(r.Context(), id, in.IsAdmin); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
@@ -173,7 +173,7 @@ func (h *Handler) adminSetAdmin(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) adminBackfillCovers(w http.ResponseWriter, r *http.Request) {
 	n, err := h.covers.Backfill(r.Context(), 25)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"fetched": n})

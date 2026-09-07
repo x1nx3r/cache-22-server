@@ -3,6 +3,7 @@ package webhandler
 import (
 	"database/sql"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -19,10 +20,18 @@ type Handler struct {
 	games   gameusecase.UseCase
 	scanner *scanner.Scanner
 	auth    *authusecase.Auth
+	secure  bool
 }
 
-func New(games gameusecase.UseCase, sc *scanner.Scanner, auth *authusecase.Auth) *Handler {
-	return &Handler{games: games, scanner: sc, auth: auth}
+func New(games gameusecase.UseCase, sc *scanner.Scanner, auth *authusecase.Auth, secure bool) *Handler {
+	return &Handler{games: games, scanner: sc, auth: auth, secure: secure}
+}
+
+// internal logs the real error and shows a generic message, so handler
+// failures don't leak paths and SQL details into HTML error pages.
+func internal(w http.ResponseWriter, err error) {
+	log.Printf("internal error: %v", err)
+	http.Error(w, "internal error", http.StatusInternalServerError)
 }
 
 func (h *Handler) Routes(mux *http.ServeMux) {
@@ -78,7 +87,7 @@ func (h *Handler) library(w http.ResponseWriter, r *http.Request) {
 	}
 	games, err := h.games.ListGames(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		internal(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -97,12 +106,12 @@ func (h *Handler) detail(w http.ResponseWriter, r *http.Request) {
 			http.NotFound(w, r)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		internal(w, err)
 		return
 	}
 	m, err := h.games.GetManifest(r.Context(), serial)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		internal(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -116,7 +125,7 @@ func (h *Handler) loginPage(w http.ResponseWriter, r *http.Request) {
 	}
 	needs, err := h.auth.NeedsSetup(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		internal(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -135,7 +144,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 	}
 	needs, err := h.auth.NeedsSetup(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		internal(w, err)
 		return
 	}
 	var token string
@@ -165,6 +174,7 @@ func (h *Handler) login(w http.ResponseWriter, r *http.Request) {
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   h.secure,
 		SameSite: http.SameSiteLaxMode,
 	})
 	http.Redirect(w, r, "/", http.StatusSeeOther)
@@ -181,7 +191,8 @@ func friendlyAuthErr(err error) string {
 	case errors.Is(err, authusecase.ErrBadUsername):
 		return "Username must be 1-64 characters."
 	default:
-		return err.Error()
+		log.Printf("auth error: %v", err)
+		return "Something went wrong."
 	}
 }
 
@@ -200,12 +211,12 @@ func (h *Handler) scan(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if _, err := h.scanner.Run(r.Context()); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		internal(w, err)
 		return
 	}
 	games, err := h.games.ListGames(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		internal(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -219,7 +230,7 @@ func (h *Handler) usersPage(w http.ResponseWriter, r *http.Request) {
 	}
 	users, err := h.auth.ListUsers(r.Context())
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		internal(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
@@ -257,7 +268,7 @@ func (h *Handler) deleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.auth.DeleteUser(r.Context(), id); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		internal(w, err)
 		return
 	}
 	http.Redirect(w, r, "/admin/users", http.StatusSeeOther)

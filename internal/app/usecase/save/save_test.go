@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/x1nx3r/cache-22-server/internal/entity"
@@ -72,6 +73,26 @@ func TestGetMissing(t *testing.T) {
 	svc := New(&memStore{rows: map[string]entity.Save{}}, t.TempDir())
 	if _, _, err := svc.Get(context.Background(), 7, "NOPE", 1); err == nil {
 		t.Error("missing save must error")
+	}
+}
+
+func TestPutLeavesNoTmpFiles(t *testing.T) {
+	dir := t.TempDir()
+	svc := New(&memStore{rows: map[string]entity.Save{}}, dir)
+	ctx := context.Background()
+	for i := 0; i < 3; i++ {
+		if _, err := svc.Put(ctx, 7, "G", 1, []byte{byte(i)}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	entries, err := os.ReadDir(filepath.Join(dir, "7", "G"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, e := range entries {
+		if strings.Contains(e.Name(), ".tmp.") {
+			t.Errorf("stale tmp file %q survived Put", e.Name())
+		}
 	}
 }
 

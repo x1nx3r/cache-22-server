@@ -47,7 +47,7 @@ func (h *Handler) serveSave(w http.ResponseWriter, r *http.Request, withBody boo
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "no save"})
 			return
 		}
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "application/octet-stream")
@@ -79,7 +79,7 @@ func (h *Handler) putSave(w http.ResponseWriter, r *http.Request) {
 	}
 	meta, err := h.saves.Put(r.Context(), u.ID, serial, slot, raw)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, meta)
@@ -97,7 +97,7 @@ func (h *Handler) deleteSave(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.saves.Delete(r.Context(), u.ID, serial, slot); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})

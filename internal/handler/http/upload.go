@@ -3,6 +3,7 @@ package httphandler
 import (
 	"context"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -111,20 +112,23 @@ func (h *Handler) finalizeUpload(ctx context.Context, tmpPath, filename, titleOv
 		return entity.Game{}, http.StatusConflict, errGameExists.Error()
 	}
 	if err := os.Rename(tmpPath, final); err != nil {
-		return entity.Game{}, http.StatusInternalServerError, err.Error()
+		log.Printf("finalize: rename %s: %v", tmpPath, err)
+		return entity.Game{}, http.StatusInternalServerError, "internal error"
 	}
 
 	g, err := h.scanner.Inspect(final)
 	if err != nil {
 		os.Remove(final)
-		return entity.Game{}, http.StatusInternalServerError, err.Error()
+		log.Printf("finalize: inspect %s: %v", final, err)
+		return entity.Game{}, http.StatusInternalServerError, "internal error"
 	}
 	if titleOver != "" {
 		g.Title = titleOver
 	}
 	if err := h.games.RegisterGame(ctx, g); err != nil {
 		os.Remove(final)
-		return entity.Game{}, http.StatusInternalServerError, err.Error()
+		log.Printf("finalize: register %s: %v", g.Serial, err)
+		return entity.Game{}, http.StatusInternalServerError, "internal error"
 	}
 	go func() {
 		_, _ = h.covers.Backfill(context.Background(), 25)

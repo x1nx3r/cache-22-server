@@ -17,7 +17,7 @@ func (h *Handler) serveFile(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "game not found"})
 			return
 		}
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	if !isISO(g.FilePath) {
@@ -32,7 +32,7 @@ func (h *Handler) serveFile(w http.ResponseWriter, r *http.Request) {
 	defer f.Close()
 	st, err := f.Stat()
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	etag := `"` + g.RedumpHash + `"`
@@ -49,7 +49,7 @@ func (h *Handler) serveManifest(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "game not found"})
 			return
 		}
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	if !m.Supported {
@@ -76,7 +76,7 @@ func (h *Handler) serveCover(w http.ResponseWriter, r *http.Request) {
 	defer f.Close()
 	st, err := f.Stat()
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	w.Header().Set("Content-Type", "image/jpeg")

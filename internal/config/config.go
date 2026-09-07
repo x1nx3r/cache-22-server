@@ -1,6 +1,9 @@
 package config
 
-import "os"
+import (
+	"os"
+	"strings"
+)
 
 type Config struct {
 	Env         string
@@ -13,6 +16,7 @@ type Config struct {
 	SavesDir    string
 	IGDBClient  string
 	IGDBSecret  string
+	CORSOrigins []string
 }
 
 func New() Config {
@@ -27,7 +31,22 @@ func New() Config {
 		IGDBClient:  envOr("IGDB_CLIENT_ID", ""),
 		IGDBSecret:  envOr("IGDB_CLIENT_SECRET", ""),
 		AdminToken:  envOr("ADMIN_TOKEN", ""),
+		CORSOrigins: csvOr("CORS_ORIGINS"),
 	}
+}
+
+func csvOr(key string) []string {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return nil
+	}
+	var out []string
+	for _, part := range strings.Split(raw, ",") {
+		if p := strings.TrimSpace(part); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 func envOr(key, def string) string {

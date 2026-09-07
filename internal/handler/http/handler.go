@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"sync"
 
@@ -88,10 +89,17 @@ func writeJSON(w http.ResponseWriter, code int, v any) {
 	_ = json.NewEncoder(w).Encode(v)
 }
 
+// internalErr logs the real error and answers with a generic message, so
+// handler failures don't leak paths and SQL details to clients.
+func (h *Handler) internalErr(w http.ResponseWriter, err error) {
+	log.Printf("internal error: %v", err)
+	writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "internal error"})
+}
+
 func (h *Handler) health(w http.ResponseWriter, r *http.Request) {
 	res, err := h.games.HealthCheck(r.Context(), "http")
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, res)
@@ -100,7 +108,7 @@ func (h *Handler) health(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) listGames(w http.ResponseWriter, r *http.Request) {
 	games, err := h.games.ListGames(r.Context())
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"games": games})
@@ -114,7 +122,7 @@ func (h *Handler) getGame(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusNotFound, map[string]string{"error": "game not found"})
 			return
 		}
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, g)
@@ -123,7 +131,7 @@ func (h *Handler) getGame(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) scan(w http.ResponseWriter, r *http.Request) {
 	n, err := h.scanner.Run(r.Context())
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	go func() {

@@ -26,13 +26,13 @@ const (
 )
 
 type uploadMeta struct {
-	ID       string    `json:"id"`
-	Serial   string    `json:"serial"`
-	Filename string    `json:"filename"`
-	Size     int64     `json:"size"`
-	Title    string    `json:"title"`
+	ID       string     `json:"id"`
+	Serial   string     `json:"serial"`
+	Filename string     `json:"filename"`
+	Size     int64      `json:"size"`
+	Title    string     `json:"title"`
 	Ranges   [][2]int64 `json:"ranges"`
-	Created  int64     `json:"created_unix"`
+	Created  int64      `json:"created_unix"`
 }
 
 func uploadsDir(libraryDir string) string {
@@ -105,7 +105,7 @@ func mergeRange(m *uploadMeta, start, end int64) bool {
 	return len(merged) == 1 && merged[0][0] == 0 && merged[0][1] == m.Size
 }
 
-func sweepStaleUploads(libraryDir string) {
+func sweepStaleUploads(libraryDir string, dropLock func(id string)) {
 	entries, err := os.ReadDir(uploadsDir(libraryDir))
 	if err != nil {
 		return
@@ -118,6 +118,9 @@ func sweepStaleUploads(libraryDir string) {
 		m, err := readMeta(libraryDir, e.Name())
 		if err != nil || m.Created < cutoff {
 			os.RemoveAll(filepath.Join(uploadsDir(libraryDir), e.Name()))
+			if dropLock != nil {
+				dropLock(e.Name())
+			}
 		}
 	}
 }
@@ -149,7 +152,7 @@ func (h *Handler) uploadInit(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusConflict, map[string]string{"error": "game already exists"})
 		return
 	}
-	sweepStaleUploads(libraryDir)
+	sweepStaleUploads(libraryDir, h.dropUploadLock)
 	if entries, err := os.ReadDir(uploadsDir(libraryDir)); err == nil {
 		for _, e := range entries {
 			if m, err := readMeta(libraryDir, e.Name()); err == nil && m.Serial == serial {
@@ -160,22 +163,22 @@ func (h *Handler) uploadInit(w http.ResponseWriter, r *http.Request) {
 	}
 	id, err := newUploadID()
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	if err := os.MkdirAll(filepath.Join(uploadsDir(libraryDir), id), 0o755); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	f, err := os.OpenFile(dataPath(libraryDir, id), os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	if err := f.Truncate(in.Size); err != nil {
 		f.Close()
 		os.RemoveAll(filepath.Join(uploadsDir(libraryDir), id))
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	f.Close()
@@ -183,7 +186,7 @@ func (h *Handler) uploadInit(w http.ResponseWriter, r *http.Request) {
 		Title: strings.TrimSpace(in.Title), Created: time.Now().Unix()}
 	if err := writeMeta(libraryDir, m); err != nil {
 		os.RemoveAll(filepath.Join(uploadsDir(libraryDir), id))
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	writeJSON(w, http.StatusCreated, map[string]any{"uploadId": id, "chunkSize": suggestedChunkBytes})
@@ -223,7 +226,7 @@ func (h *Handler) uploadChunk(w http.ResponseWriter, r *http.Request) {
 	}
 	f, err := os.OpenFile(dataPath(libraryDir, id), os.O_WRONLY, 0o644)
 	if err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	defer f.Close()
@@ -231,7 +234,7 @@ func (h *Handler) uploadChunk(w http.ResponseWriter, r *http.Request) {
 	for len(body) > 0 {
 		n, werr := f.WriteAt(body, offset+written)
 		if werr != nil {
-			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": werr.Error()})
+			h.internalErr(w, werr)
 			return
 		}
 		if n == 0 {
@@ -243,7 +246,7 @@ func (h *Handler) uploadChunk(w http.ResponseWriter, r *http.Request) {
 	}
 	complete := mergeRange(&m, offset, offset+written)
 	if err := writeMeta(libraryDir, m); err != nil {
-		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		h.internalErr(w, err)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"received": offset + written, "complete": complete})

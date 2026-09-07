@@ -93,6 +93,25 @@ func TestUpsertAndGet(t *testing.T) {
 	}
 }
 
+func TestHealthPingsDB(t *testing.T) {
+	db := openTestDB(t)
+	r := NewHealthRepository(db)
+	status, err := r.GetStatus(context.Background(), "http")
+	if err != nil {
+		t.Fatalf("GetStatus: %v", err)
+	}
+	if status != "ok" {
+		t.Errorf("status = %q, want ok", status)
+	}
+
+	// A closed pool must surface as a health failure.
+	closed := NewHealthRepository(db)
+	db.Close()
+	if _, err := closed.GetStatus(context.Background(), "http"); err == nil {
+		t.Error("closed db must fail health")
+	}
+}
+
 func TestList(t *testing.T) {
 	db := openTestDB(t)
 	ctx := context.Background()

@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/x1nx3r/cache-22-server/internal/app/repository"
 	authusecase "github.com/x1nx3r/cache-22-server/internal/app/usecase/auth"
@@ -32,7 +33,7 @@ func Init(cfg config.Config) (*Dependencies, error) {
 		return nil, err
 	}
 	games := db.NewGameRepository(dbConn)
-	health := db.NewHealthRepository()
+	health := db.NewHealthRepository(dbConn)
 	users := db.NewUserRepository(dbConn)
 	sessions := db.NewSessionRepository(dbConn)
 	covers := db.NewCoverRepository(dbConn)
@@ -43,27 +44,44 @@ func Init(cfg config.Config) (*Dependencies, error) {
 	saveSvc := saveusecase.New(saves, cfg.SavesDir)
 	sc := scanner.New(cfg.LibraryPath, games)
 	h := httphandler.New(uc, sc, authSvc, coverSvc, saveSvc)
-	wh := webhandler.New(uc, sc, authSvc)
+	wh := webhandler.New(uc, sc, authSvc, cfg.Env == "prod")
 	return &Dependencies{Handler: h, Web: wh, Scanner: sc, Games: games, DB: dbConn}, nil
 }
 
-func StartHTTPServer(cfg config.Config, d *Dependencies) error {
+// NewHTTPServer builds the API + web server. Deliberately no Read/Write
+// timeouts: chunk uploads and range downloads stream for minutes. Only the
+// headers are deadline-guarded, which is what Slowloris needs.
+func NewHTTPServer(cfg config.Config, d *Dependencies) *http.Server {
 	mux := http.NewServeMux()
 	d.Handler.Routes(mux)
 	d.Web.Routes(mux)
 	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("./static"))))
-	addr := fmt.Sprintf("0.0.0.0:%d", cfg.HTTPPort)
-	return http.ListenAndServe(addr, withCORS(mux))
+	return &http.Server{
+		Addr:              fmt.Sprintf("0.0.0.0:%d", cfg.HTTPPort),
+		Handler:           withCORS(cfg, mux),
+		ReadHeaderTimeout: 10 * time.Second,
+		IdleTimeout:       120 * time.Second,
+	}
 }
 
-func withCORS(next http.Handler) http.Handler {
+// withCORS adds CORS headers only for origins explicitly configured via
+// CORS_ORIGINS. The default (unset) sends none: the Go client is not a
+// browser and the web UI is same-origin.
+func withCORS(cfg config.Config, next http.Handler) http.Handler {
+	origins := map[string]bool{}
+	for _, o := range cfg.CORSOrigins {
+		origins[o] = true
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-		if r.Method == http.MethodOptions {
-			w.WriteHeader(http.StatusNoContent)
-			return
+		if origins[r.Header.Get("Origin")] {
+			w.Header().Set("Access-Control-Allow-Origin", r.Header.Get("Origin"))
+			w.Header().Set("Vary", "Origin")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
 		}
 		next.ServeHTTP(w, r)
 	})

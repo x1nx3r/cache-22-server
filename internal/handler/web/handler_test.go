@@ -89,7 +89,7 @@ func (f *fakeRepo) Upsert(_ context.Context, g entity.Game) error {
 func newMux(t *testing.T, uc gameusecase.UseCase, libDir string) *http.ServeMux {
 	t.Helper()
 	authSvc, _, _ := testutil.NewAuth(t, "setup-secret")
-	h := New(uc, scanner.New(libDir, &fakeRepo{}), authSvc)
+	h := New(uc, scanner.New(libDir, &fakeRepo{}), authSvc, false)
 	mux := http.NewServeMux()
 	h.Routes(mux)
 	return mux
@@ -209,7 +209,7 @@ func TestScanPartial(t *testing.T) {
 
 	repo := &fakeRepo{}
 	authSvc, _, _ := testutil.NewAuth(t, "setup-secret")
-	h := New(&fakeUC{repo: repo}, scanner.New(dir, repo), authSvc)
+	h := New(&fakeUC{repo: repo}, scanner.New(dir, repo), authSvc, false)
 	mux := http.NewServeMux()
 	h.Routes(mux)
 
@@ -299,7 +299,7 @@ func TestLoginFlow(t *testing.T) {
 
 func TestSetupFlow(t *testing.T) {
 	authSvc := testutil.NewAuthFresh(t, "setup-secret")
-	h := New(&fakeUC{}, scanner.New(t.TempDir(), &fakeRepo{}), authSvc)
+	h := New(&fakeUC{}, scanner.New(t.TempDir(), &fakeRepo{}), authSvc, false)
 	mux := http.NewServeMux()
 	h.Routes(mux)
 
